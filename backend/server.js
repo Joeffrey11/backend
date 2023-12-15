@@ -3,6 +3,9 @@ const bodyParser = require("body-parser");
 const mysql = require("mysql");
 const server = express();
 const jwt = require("jsonwebtoken");
+const path = require("path");
+const { fileURLToPath } = require("url");
+const multer = require("multer");
 server.use(bodyParser.json());
 
 //Establish the database connection
@@ -31,6 +34,20 @@ server.listen(8085, function check(error) {
     console.log("Started....!!!! 8085");
   }
 });
+
+server.use("/book_img", express.static(path.join(__dirname, "public/books")));
+
+// img storage confing
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "public/books");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
 
 /////////////////////////////////////////////////////////////////////
 //////////////////////////// USERS //////////////////////////////////
@@ -292,11 +309,24 @@ server.get("/api/book/:id", (req, res) => {
 });
 
 // ADD BOOK
-server.post("/api/book", (req, res) => {
+server.post("/api/book", upload.single("book_img"), (req, res) => {
   const body = req.body;
+
+  const { filename } = req.file;
+
+  const data = {
+    writer_id: body.writer_id,
+    writer_name: body.writer_name,
+    name: body.name,
+    genre: body.genre,
+    url: filename,
+    description: body.description,
+    body: body.body,
+  };
+
   try {
     const sql = "INSERT INTO book SET ?";
-    db.query(sql, [body], (error, result) => {
+    db.query(sql, [data], (error, result) => {
       if (error) {
         res.status(500).send({ status: false, message: error.message });
       } else {
@@ -310,12 +340,23 @@ server.post("/api/book", (req, res) => {
 
 // UPDATE BOOK BY ID
 
-server.put("/api/book/:id", (req, res) => {
-  const body = req.body;
+server.put("/api/book/:id", upload.single("book_img"), (req, res) => {
   const { id } = req.params;
+  const body = req.body;
+  const { filename } = req.file;
+
+  const data = {
+    writer_id: body.writer_id,
+    writer_name: body.writer_name,
+    name: body.name,
+    genre: body.genre,
+    url: filename,
+    description: body.description,
+    body: body.body,
+  };
   try {
     const sql = "UPDATE book SET ? WHERE book_id = ?";
-    db.query(sql, [body, id], (error, result) => {
+    db.query(sql, [data, id], (error, result) => {
       if (error) {
         res.status(500).send({ status: false, message: error.message });
       } else {
